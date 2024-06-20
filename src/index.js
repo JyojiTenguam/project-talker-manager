@@ -6,7 +6,7 @@ app.use(express.json());
 
 const HTTP_OK_STATUS = 200;
 const PORT = process.env.PORT || '3001';
-
+const crypto = require('crypto');
 // não remova esse endpoint, e para o avaliador funcionar
 app.get('/', (_request, response) => {
   response.status(HTTP_OK_STATUS).send();
@@ -48,4 +48,10 @@ app.get('/talker/:id', async (request, response) => {
   } catch (error) {
     response.status(500).send({ message: 'Erro ao processar a requisição' });
   }
+});
+
+app.post('/login', (request, response) => {
+  // Gera um token aleatório de 16 caracteres
+  const token = crypto.randomBytes(8).toString('hex');
+  response.status(200).send({ token });
 });
