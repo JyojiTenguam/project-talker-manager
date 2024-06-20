@@ -12,6 +12,10 @@ app.get('/', (_request, response) => {
   response.status(HTTP_OK_STATUS).send();
 });
 
+app.listen(PORT, () => {
+  console.log('Online');
+});
+
 // Endpoint GET /talker
 app.get('/talker', async (_request, response) => {
   try {
@@ -25,10 +29,23 @@ app.get('/talker', async (_request, response) => {
     }
   } catch (error) {
     // Em caso de erro na leitura do arquivo, retorna um array vazio
-    response.status(HTTP_OK_STATUS).send([]);
+    response.status(500).send({ message: 'Erro ao ler palestrantes cadastrados' });
   }
 });
 
-app.listen(PORT, () => {
-  console.log('Online');
+app.get('/talker/:id', async (request, response) => {
+  try {
+    const talkers = await fs.readFile('src/talker.json', 'utf-8');
+    const talkersList = JSON.parse(talkers);
+    const { id } = request.params;
+    const talker = talkersList.find((talk) => talk.id === parseInt(id, 10));
+
+    if (talker) {
+      response.status(200).send(talker);
+    } else {
+      response.status(404).send({ message: 'Pessoa palestrante não encontrada' });
+    }
+  } catch (error) {
+    response.status(500).send({ message: 'Erro ao processar a requisição' });
+  }
 });
