@@ -5,23 +5,16 @@ const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
-
 const HTTP_OK_STATUS = 200;
 const PORT = process.env.PORT || '3001';
-
-// não remova esse endpoint, e para o avaliador funcionar
 app.get('/', (_request, response) => {
   response.status(HTTP_OK_STATUS).send();
 });
-
 const talkersFilePath = path.join(__dirname, 'talker.json');
-
-// Endpoint GET /talker
 app.get('/talker', async (_request, response) => {
   try {
     const talkers = await fs.readFile(talkersFilePath, 'utf-8');
     const talkersList = JSON.parse(talkers);
-
     if (talkersList.length > 0) {
       response.status(HTTP_OK_STATUS).send(talkersList);
     } else {
@@ -38,7 +31,6 @@ app.get('/talker/:id', async (request, response) => {
     const talkersList = JSON.parse(talkers);
     const { id } = request.params;
     const talker = talkersList.find((talk) => talk.id === parseInt(id, 10));
-
     if (talker) {
       response.status(200).send(talker);
     } else {
@@ -124,8 +116,7 @@ function validateWatchedAt(watchedAt, response) {
   if (!watchedAt) {
     response.status(400).json({ message: 'O campo "watchedAt" é obrigatório' });
     return false;
-  }
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(watchedAt)) {
+  } if (!/^\d{2}\/\d{2}\/\d{4}$/.test(watchedAt)) {
     response.status(400).json({ message: 'O campo "watchedAt" deve ter o formato "dd/mm/aaaa"' });
     return false;
   }
@@ -216,6 +207,39 @@ app.put('/talker/:id', validateToken, validateName,
       return response.status(500).send({ message: 'Erro ao editar o palestrante' });
     }
   });
+  
+app.delete('/talker/:id', validateToken, async (request, response) => {
+  const { id } = request.params;
+  try {
+    const talkers = JSON.parse(await fs.readFile(talkersFilePath, 'utf-8'));
+    const talkerIndex = talkers.findIndex((talker) => talker.id === parseInt(id, 10));
+
+    if (talkerIndex === -1) {
+      return response.status(404).json({ message: 'Pessoa palestrante não encontrada' });
+    }
+    talkers.splice(talkerIndex, 1);
+    await fs.writeFile(talkersFilePath, JSON.stringify(talkers, null, 2));
+    return response.status(204).end();
+  } catch (error) {
+    return response.status(500).send({ message: 'Erro ao deletar o palestrante' }); 
+  }
+});
+
+app.get('/talker/search', validateToken, async (request, response) => {
+  const { q } = request.query;
+  try {
+    const talkers = JSON.parse(await fs.readFile(talkersFilePath, 'utf-8'));
+    if (!q) {
+      return response.status(200).json(talkers);
+    }
+    const filteredTalkers = talkers.filter((talker) =>
+      talker.name.toLowerCase().includes(q.toLowerCase()));
+    return response.status(200).json(filteredTalkers);
+  } catch (error) {
+    return response.status(500).send({ message: 'Erro ao buscar palestrantes' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log('Online');
 });
