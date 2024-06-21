@@ -216,7 +216,6 @@ app.put('/talker/:id', validateToken, validateName,
       return response.status(500).send({ message: 'Erro ao editar o palestrante' });
     }
   });
-
 app.listen(PORT, () => {
   console.log('Online');
 });
