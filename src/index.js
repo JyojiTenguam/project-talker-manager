@@ -1,45 +1,19 @@
 const express = require('express');
-const fs = require('fs').promises; // Importa o módulo fs para trabalhar com promessas
+const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
+
 const HTTP_OK_STATUS = 200;
 const PORT = process.env.PORT || '3001';
+
 app.get('/', (_request, response) => {
   response.status(HTTP_OK_STATUS).send();
 });
-const talkersFilePath = path.join(__dirname, 'talker.json');
-app.get('/talker', async (_request, response) => {
-  try {
-    const talkers = await fs.readFile(talkersFilePath, 'utf-8');
-    const talkersList = JSON.parse(talkers);
-    if (talkersList.length > 0) {
-      response.status(HTTP_OK_STATUS).send(talkersList);
-    } else {
-      response.status(HTTP_OK_STATUS).send([]);
-    }
-  } catch (error) {
-    response.status(500).send({ message: 'Erro ao ler palestrantes cadastrados' });
-  }
-});
 
-app.get('/talker/:id', async (request, response) => {
-  try {
-    const talkers = await fs.readFile(talkersFilePath, 'utf-8');
-    const talkersList = JSON.parse(talkers);
-    const { id } = request.params;
-    const talker = talkersList.find((talk) => talk.id === parseInt(id, 10));
-    if (talker) {
-      response.status(200).send(talker);
-    } else {
-      response.status(404).send({ message: 'Pessoa palestrante não encontrada' });
-    }
-  } catch (error) {
-    response.status(500).send({ message: 'Erro ao processar a requisição' });
-  }
-});
+const talkersFilePath = path.join(__dirname, 'talker.json');
 
 function validateLogin(request, response, next) {
   const { email, password } = request.body;
@@ -61,7 +35,7 @@ function validateLogin(request, response, next) {
 
 app.post('/login', validateLogin, (request, response) => {
   const token = crypto.randomBytes(8).toString('hex');
-  response.status(200).send({ token });
+  response.status(HTTP_OK_STATUS).send({ token });
 });
 
 function validateToken(request, response, next) {
@@ -172,6 +146,51 @@ function validateTalk(request, response, next) {
   next();
 }
 
+app.get('/talker/search', validateToken, async (request, response) => {
+  const { q } = request.query;
+  try {
+    const talkers = JSON.parse(await fs.readFile(talkersFilePath, 'utf-8'));
+    if (!q) {
+      return response.status(HTTP_OK_STATUS).json(talkers);
+    }
+    const filteredTalkers = talkers.filter((talker) =>
+      talker.name.toLowerCase().includes(q.toLowerCase()));
+    return response.status(HTTP_OK_STATUS).json(filteredTalkers);
+  } catch (error) {
+    return response.status(500).send({ message: 'Erro ao buscar palestrantes' });
+  }
+});
+
+app.get('/talker', async (_request, response) => {
+  try {
+    const talkers = await fs.readFile(talkersFilePath, 'utf-8');
+    const talkersList = JSON.parse(talkers);
+    if (talkersList.length > 0) {
+      response.status(HTTP_OK_STATUS).send(talkersList);
+    } else {
+      response.status(HTTP_OK_STATUS).send([]);
+    }
+  } catch (error) {
+    response.status(500).send({ message: 'Erro ao ler palestrantes cadastrados' });
+  }
+});
+
+app.get('/talker/:id', async (request, response) => {
+  try {
+    const talkers = await fs.readFile(talkersFilePath, 'utf-8');
+    const talkersList = JSON.parse(talkers);
+    const { id } = request.params;
+    const talker = talkersList.find((talk) => talk.id === parseInt(id, 10));
+    if (talker) {
+      response.status(HTTP_OK_STATUS).send(talker);
+    } else {
+      response.status(404).send({ message: 'Pessoa palestrante não encontrada' });
+    }
+  } catch (error) {
+    response.status(500).send({ message: 'Erro ao processar a requisição' });
+  }
+});
+
 app.post('/talker', validateToken, validateName,
   validateAge, validateTalk, async (request, response) => {
     try {
@@ -202,7 +221,7 @@ app.put('/talker/:id', validateToken, validateName,
         id: talkers[talkerIndex].id,
       };
       await fs.writeFile(talkersFilePath, JSON.stringify(talkers, null, 2));
-      return response.status(200).json(talkers[talkerIndex]);
+      return response.status(HTTP_OK_STATUS).json(talkers[talkerIndex]);
     } catch (error) {
       return response.status(500).send({ message: 'Erro ao editar o palestrante' });
     }
@@ -222,21 +241,6 @@ app.delete('/talker/:id', validateToken, async (request, response) => {
     return response.status(204).end();
   } catch (error) {
     return response.status(500).send({ message: 'Erro ao deletar o palestrante' }); 
-  }
-});
-
-app.get('/talker/search', validateToken, async (request, response) => {
-  const { q } = request.query;
-  try {
-    const talkers = JSON.parse(await fs.readFile(talkersFilePath, 'utf-8'));
-    if (!q) {
-      return response.status(200).json(talkers);
-    }
-    const filteredTalkers = talkers.filter((talker) =>
-      talker.name.toLowerCase().includes(q.toLowerCase()));
-    return response.status(200).json(filteredTalkers);
-  } catch (error) {
-    return response.status(500).send({ message: 'Erro ao buscar palestrantes' });
   }
 });
 
